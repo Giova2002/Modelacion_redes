@@ -1,187 +1,8 @@
-# import heapq
-# from collections import defaultdict
-# import tkinter as tk
-# from tkinter import messagebox, simpledialog
-# from PIL import Image, ImageTk
-# import tempfile
-# import os
-# import graphviz
-
-# # Función para cargar destinos y vuelos desde un archivo
-# def load_data(filename):
-#     destinations = {}
-#     flights = []
-#     with open(filename, 'r') as file:
-#         lines = file.readlines()
-#         mode = None
-#         for line in lines:
-#             line = line.strip()
-#             if line == "# Destinos":
-#                 mode = "destinos"
-#                 continue
-#             elif line == "# Vuelos":
-#                 mode = "vuelos"
-#                 continue
-
-#             if mode == "destinos" and line:
-#                 code, name, visa_required = line.split(',')
-#                 destinations[code] = {"name": name, "visa_required": visa_required == "Yes"}
-#             elif mode == "vuelos" and line:
-#                 src, dst, cost = line.split(',')
-#                 flights.append((src, dst, float(cost)))
-#                 flights.append((dst, src, float(cost)))  # Asumimos vuelos bidireccionales
-#     return destinations, flights
-
-# # Función para construir el grafo de vuelos
-# def build_graph(flights):
-#     graph = defaultdict(list)
-#     for src, dst, cost in flights:
-#         graph[src].append((dst, cost))
-#     return graph
-
-# # Función para encontrar la ruta más barata usando Dijkstra
-# def find_cheapest_route(graph, destinations, start, end, has_visa):
-#     heap = [(0, start, [])]
-#     visited = set()
-
-#     while heap:
-#         cost, node, path = heapq.heappop(heap)
-#         if node in visited:
-#             continue
-#         path = path + [node]
-#         visited.add(node)
-        
-#         if node == end:
-#             return cost, path
-        
-#         for neighbor, price in graph[node]:
-#             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
-#                 heapq.heappush(heap, (cost + price, neighbor, path))
-    
-#     return float("inf"), []
-
-# # Función para encontrar la ruta con menos escalas usando Dijkstra
-# def find_shortest_route(graph, destinations, start, end, has_visa):
-#     heap = [(0, start, [])]  # (number of stops, current node, path)
-#     visited = set()
-
-#     while heap:
-#         stops, node, path = heapq.heappop(heap)
-#         if node in visited:
-#             continue
-#         path = path + [node]
-#         visited.add(node)
-        
-#         if node == end:
-#             return stops, path
-        
-#         for neighbor, _ in graph[node]:
-#             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
-#                 heapq.heappush(heap, (stops + 1, neighbor, path))
-    
-#     return float("inf"), []
-
-# # Función para mostrar el menú
-# def show_menu(root, destinations, flights, graph):
-#     menu_window = tk.Toplevel(root)
-#     menu_window.title("Metro Travel")
-#     menu_window.geometry("400x300")
-
-#     tk.Label(menu_window, text="Bienvenido a Metro Travel", font=("Arial", 16)).pack(pady=10)
-
-#     def print_destinations():
-#         dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
-#         messagebox.showinfo("Destinos cargados", dest_str)
-
-#     def print_flights():
-#         flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
-#         messagebox.showinfo("Vuelos cargados", flights_str)
-
-#     def render_and_show_graph():
-#         dot = graphviz.Digraph()
-#         for src, edges in graph.items():
-#             for dst, cost in edges:
-#                 dot.edge(src, dst, label=f"${cost:.2f}")
-
-#         # Renderizar el gráfico como imagen temporal
-#         graph_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-#         dot.render(graph_file.name, format='png', engine='dot', quiet=True)
-
-#         # Mostrar la imagen en una ventana emergente
-#         image = Image.open(graph_file.name)
-#         photo = ImageTk.PhotoImage(image)
-#         graph_window = tk.Toplevel(menu_window)
-#         graph_window.title("Grafo de vuelos")
-#         graph_label = tk.Label(graph_window, image=photo)
-#         graph_label.image = photo
-#         graph_label.pack(padx=10, pady=10)
-
-#         # Cerrar y eliminar el archivo temporal después de mostrar la imagen
-#         graph_file.close()
-#         os.unlink(graph_file.name)
-
-#     def search_route():
-#         start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
-#         end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
-#         has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
-
-#         if start not in destinations or end not in destinations:
-#             messagebox.showerror("Error", "Código de aeropuerto no válido.")
-#             return
-
-#         route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
-
-#         if route_type == "costo":
-#             cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
-#             if cost == float("inf"):
-#                 messagebox.showinfo("Ruta más barata", "No hay ruta disponible que cumpla con los requisitos.")
-#             else:
-#                 route_str = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
-#                 messagebox.showinfo("Ruta más barata", route_str)
-#         elif route_type == "escalas":
-#             stops, shortest_path = find_shortest_route(graph, destinations, start, end, has_visa)
-#             if stops == float("inf"):
-#                 messagebox.showinfo("Ruta con menos escalas", "No hay ruta disponible que cumpla con los requisitos.")
-#             else:
-#                 route_str = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}"
-#                 messagebox.showinfo("Ruta con menos escalas", route_str)
-#         else:
-#             messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
-
-#     tk.Button(menu_window, text="Imprimir destinos cargados", width=30, command=print_destinations).pack(pady=10)
-#     tk.Button(menu_window, text="Imprimir vuelos cargados", width=30, command=print_flights).pack(pady=10)
-#     tk.Button(menu_window, text="Mostrar grafo de vuelos", width=30, command=render_and_show_graph).pack(pady=10)
-#     tk.Button(menu_window, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
-#     tk.Button(menu_window, text="Salir", width=30, command=menu_window.destroy).pack(pady=10)
-
-# # Función principal
-# def main():
-#     # Cargar destinos y vuelos desde el archivo
-#     destinations, flights = load_data('flights.txt')
-#     graph = build_graph(flights)
-
-#     root = tk.Tk()
-#     root.title("Metro Travel")
-#     root.geometry("400x300")
-
-#     show_menu(root, destinations, flights, graph)
-
-#     root.mainloop()
-
-# if __name__ == "__main__":
-#     main()
-
-
-
-
-
-
-import heapq
-from collections import defaultdict
+import heapq #utilizada para realizar una cola de prioridad para ek algoritmo de dijstra
+from collections import defaultdict #Proporciona un diccionario con valores por defecto.
 import tkinter as tk
-from tkinter import messagebox, simpledialog
-import networkx as nx
-import matplotlib.pyplot as plt
+from tkinter import simpledialog, messagebox
+import random
 
 # Función para cargar destinos y vuelos desde un archivo
 def load_data(filename):
@@ -236,6 +57,7 @@ def find_cheapest_route(graph, destinations, start, end, has_visa):
     
     return float("inf"), []
 
+
 # Función para encontrar la ruta con menos escalas usando Dijkstra
 def find_shortest_route(graph, destinations, start, end, has_visa):
     heap = [(0, start, [])]  # (number of stops, current node, path)
@@ -249,136 +71,200 @@ def find_shortest_route(graph, destinations, start, end, has_visa):
         visited.add(node)
         
         if node == end:
-            return stops, path
+            total_cost = sum(graph[path[i]][j][1] for i in range(len(path)-1) for j in range(len(graph[path[i]])) if graph[path[i]][j][0] == path[i+1])
+            return stops, path, total_cost
         
         for neighbor, _ in graph[node]:
             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
                 heapq.heappush(heap, (stops + 1, neighbor, path))
     
-    return float("inf"), []
+    return float("inf"), [], 0
 
 # Función para mostrar el menú
 def show_menu(root, destinations, flights, graph):
-    menu_window = tk.Toplevel(root)
-    menu_window.title("Metro Travel")
-    menu_window.geometry("400x300")
+    root.title("Metro Travel")
+    root.geometry("400x300")
 
-    tk.Label(menu_window, text="Bienvenido a Metro Travel", font=("Arial", 16)).pack(pady=10)
-
-    def print_destinations():
-        dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
-        messagebox.showinfo("Destinos cargados", dest_str)
-
-    def print_flights():
-        flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
-        messagebox.showinfo("Vuelos cargados", flights_str)
-
-    def print_graph_gui():
-        print_graph(graph, destinations)
-
-    def search_route():
-        start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
-        end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
-        has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
-
-        if start not in destinations or end not in destinations:
-            messagebox.showerror("Error", "Código de aeropuerto no válido.")
-            return
-
-        route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
-
-        if route_type == "costo":
-            cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
-            if cost == float("inf"):
-                messagebox.showinfo("Ruta más barata", "No hay ruta disponible que cumpla con los requisitos.")
-            else:
-                route_str = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
-                messagebox.showinfo("Ruta más barata", route_str)
-        elif route_type == "escalas":
-            stops, shortest_path = find_shortest_route(graph, destinations, start, end, has_visa)
-            if stops == float("inf"):
-                messagebox.showinfo("Ruta con menos escalas", "No hay ruta disponible que cumpla con los requisitos.")
-            else:
-                route_str = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}"
-                messagebox.showinfo("Ruta con menos escalas", route_str)
-        else:
-            messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
-
-    tk.Button(menu_window, text="Imprimir destinos cargados", width=30, command=print_destinations).pack(pady=10)
-    tk.Button(menu_window, text="Imprimir vuelos cargados", width=30, command=print_flights).pack(pady=10)
-    tk.Button(menu_window, text="Imprimir grafo de vuelos", width=30, command=print_graph_gui).pack(pady=10)
-    tk.Button(menu_window, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
-    tk.Button(menu_window, text="Salir", width=30, command=menu_window.destroy).pack(pady=10)
-
+    tk.Label(root, text="Bienvenido a Metro Travel", font=("Arial", 16)).pack(pady=10)
 
     def print_destinations():
+        dest_window = tk.Toplevel(root)
+        dest_window.title("Destinos Cargados")
+        dest_window.geometry("400x300")
+
+        text = tk.Text(dest_window, wrap=tk.WORD)
+        text.pack(expand=True, fill=tk.BOTH)
+
         dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
-        messagebox.showinfo("Destinos cargados", dest_str)
+        text.insert(tk.END, dest_str)
+        text.config(state=tk.DISABLED)  # Desactivar la edición del widget de texto
 
     def print_flights():
+        flights_window = tk.Toplevel(root)
+        flights_window.title("Vuelos Cargados")
+        flights_window.geometry("400x300")
+
+        text = tk.Text(flights_window, wrap=tk.WORD)
+        text.pack(expand=True, fill=tk.BOTH)
+
         flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
-        messagebox.showinfo("Vuelos cargados", flights_str)
+        text.insert(tk.END, flights_str)
+        text.config(state=tk.DISABLED) 
 
-    def print_graph(graph, destinations):
-        G = nx.Graph()
+    # def draw_graph(canvas, graph, destinations, path=[], route_info=""):
+    #     canvas.delete("all")
+    #     nodes = list(destinations.keys())
+    #     pos = {}
+    #     # Aumentar el tamaño del área de dibujo para mejorar la visibilidad
+    #     width, height = 800, 600
+    #     canvas.config(width=width, height=height)
+    #     for node in nodes:
+    #         pos[node] = (random.randint(50, width - 50), random.randint(50, height - 50))
+        
+    #     for node, neighbors in graph.items():
+    #         x1, y1 = pos[node]
+    #         canvas.create_oval(x1-10, y1-10, x1+10, y1+10, fill="skyblue")
+    #         canvas.create_text(x1, y1, text=node, fill="black")
+    #         for neighbor, cost in neighbors:
+    #             x2, y2 = pos[neighbor]
+    #             if (node in path and neighbor in path and 
+    #                 abs(path.index(node) - path.index(neighbor)) == 1):
+    #                 canvas.create_line(x1, y1, x2, y2, fill="red", width=2)
+    #             else:
+    #                 canvas.create_line(x1, y1, x2, y2, fill="gray")
+    #             mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+    #             canvas.create_text(mid_x, mid_y, text=f"${cost:.2f}", fill="red")
+        
+    #     if route_info:
+    #         canvas.create_text(width / 2, height - 20, text=route_info, fill="blue", font=("Arial", 10, "bold"))
 
+
+
+    def draw_graph(canvas, graph, destinations, path=[], route_info=""):
+        canvas.delete("all")
+        nodes = list(destinations.keys())
+        pos = {}
+        # Aumentar el tamaño del área de dibujo para mejorar la visibilidad
+        width, height = 800, 600
+        canvas.config(width=width, height=height)
+        for node in nodes:
+            pos[node] = (random.randint(50, width - 50), random.randint(50, height - 50))
+        
         for node, neighbors in graph.items():
-            G.add_node(node, label=destinations[node]["name"])
+            x1, y1 = pos[node]
+            # Ajustar el radio del círculo para que el texto quede dentro
+            radius = 20
+            canvas.create_oval(x1 - radius, y1 - radius, x1 + radius, y1 + radius, fill="pink")
+            canvas.create_text(x1, y1, text=node, fill="black", font=("Arial", 10, "bold"))
             for neighbor, cost in neighbors:
-                G.add_edge(node, neighbor, weight=cost)
+                x2, y2 = pos[neighbor]
+                if (node in path and neighbor in path and 
+                    abs(path.index(node) - path.index(neighbor)) == 1):
+                    canvas.create_line(x1, y1, x2, y2, fill="red", width=2)
+                else:
+                    canvas.create_line(x1, y1, x2, y2, fill="gray")
+                mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+                canvas.create_text(mid_x, mid_y, text=f"${cost:.2f}", fill="red")
 
-        pos = nx.spring_layout(G, seed=42)  # Layout para posicionar los nodos
+        if route_info:
+            canvas.create_text(width / 2, height - 20, text=route_info, fill="blue", font=("Arial", 15, "bold"))
 
-        # Dibujar nodos
-        nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=500)
+   
 
-        # Dibujar etiquetas de nodos
-        nx.draw_networkx_labels(G, pos, labels=nx.get_node_attributes(G, 'label'), font_size=10, font_color='black')
+    def print_graph_gui(path=[], route_info=""):
+        if not path:  # Si no hay ruta válida, muestra un mensaje en lugar del grafo
+            messagebox.showinfo("Información", route_info)
+            return
+        
+        graph_window = tk.Toplevel()
+        graph_window.title("Grafo de vuelos")
+        graph_window.geometry("800x600")
 
-        # Dibujar aristas
-        nx.draw_networkx_edges(G, pos, edgelist=G.edges(), width=1.0, alpha=0.5, edge_color='gray')
+        # Crear un frame para contener el lienzo y la barra de desplazamiento
+        frame = tk.Frame(graph_window)
+        frame.pack(fill=tk.BOTH, expand=tk.YES)
 
-        # Dibujar etiquetas de aristas (costos)
-        edge_labels = {(node1, node2): f"${cost:.2f}" for node1, node2, cost in G.edges(data='weight')}
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+        canvas = tk.Canvas(frame, width=800, height=600, bg="white")
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=tk.YES)
 
-        plt.title("Grafo de vuelos")
-        plt.axis('off')
-        plt.show()
+        # Crear una barra de desplazamiento vertical
+        scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Configurar la barra de desplazamiento para que se mueva con el lienzo
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        draw_graph(canvas, graph, destinations, path, route_info)
+
+        # Ajustar el tamaño del lienzo al contenido
+        canvas.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        graph_window.mainloop()
+    
+    def print_graph_gui_vuelos(path=[], route_info=""):
+        graph_window = tk.Toplevel(root)
+        graph_window.title("Grafo de vuelos")
+        graph_window.geometry("800x600")  # Ajustar el tamaño de la ventana para que coincida con el tamaño del lienzo
+
+        canvas = tk.Canvas(graph_window, width=800, height=600, bg="white")
+        canvas.pack()
+
+        draw_graph(canvas, graph, destinations, path, route_info)
+
+
+
 
     def search_route():
-        start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
-        end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
-        has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
-
-        if start not in destinations or end not in destinations:
-            messagebox.showerror("Error", "Código de aeropuerto no válido.")
-            return
+        start = None
+        end = None
+        
+        while start not in destinations:
+            start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
+            if start not in destinations:
+                messagebox.showerror("Error", "Código de aeropuerto de origen no válido. Vuelve a ingresar un código existente.")
+        
+        while end not in destinations:
+            end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
+            if end not in destinations:
+                messagebox.showerror("Error", "Código de aeropuerto de destino no válido. Vuelve a ingresar un código existente.")
+        
+        while True:
+            visa_input = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower()
+            if visa_input == "si":
+                has_visa = True
+                break
+            elif visa_input == "no":
+                has_visa = False
+                break
+            else:
+                messagebox.showerror("Error", "Por favor, ingresa 'si' o 'no'.")
 
         route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
 
         if route_type == "costo":
             cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
             if cost == float("inf"):
-                messagebox.showinfo("Ruta más barata", "No hay ruta disponible que cumpla con los requisitos.")
+                route_info = "No hay ruta disponible que cumpla con los requisitos."
             else:
-                route_str = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
-                messagebox.showinfo("Ruta más barata", route_str)
+                route_info = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
+            print_graph_gui(cheapest_path, route_info)
+           
         elif route_type == "escalas":
-            stops, shortest_path = find_shortest_route(graph, destinations, start, end, has_visa)
+            stops, shortest_path, total_cost = find_shortest_route(graph, destinations, start, end, has_visa)
             if stops == float("inf"):
-                messagebox.showinfo("Ruta con menos escalas", "No hay ruta disponible que cumpla con los requisitos.")
+                route_info = "No hay ruta disponible que cumpla con los requisitos."
             else:
-                route_str = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}"
-                messagebox.showinfo("Ruta con menos escalas", route_str)
+                route_info = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}\nCosto total: ${total_cost:.2f}"
+            print_graph_gui(shortest_path, route_info)
+            
         else:
             messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
 
-    tk.Button(menu_window, text="Imprimir destinos cargados", width=30, command=print_destinations).pack(pady=10)
-    tk.Button(menu_window, text="Imprimir vuelos cargados", width=30, command=print_flights).pack(pady=10)
-    tk.Button(menu_window, text="Imprimir grafo de vuelos", width=30, command=print_graph).pack(pady=10)
-    tk.Button(menu_window, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
-    tk.Button(menu_window, text="Salir", width=30, command=menu_window.destroy).pack(pady=10)
+    tk.Button(root, text="Imprimir destinos cargados", width=30, command=print_destinations).pack(pady=10)
+    tk.Button(root, text="Imprimir vuelos cargados", width=30, command=print_flights).pack(pady=10)
+    tk.Button(root, text="Imprimir grafo de vuelos", width=30, command=lambda: print_graph_gui_vuelos()).pack(pady=10)
+    tk.Button(root, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
+    tk.Button(root, text="Salir", width=30, command=root.destroy).pack(pady=10)
 
 # Función principal
 def main():
@@ -387,8 +273,6 @@ def main():
     graph = build_graph(flights)
 
     root = tk.Tk()
-    root.title("Metro Travel")
-    root.geometry("400x300")
 
     show_menu(root, destinations, flights, graph)
 
@@ -404,10 +288,9 @@ if __name__ == "__main__":
 # import heapq
 # from collections import defaultdict
 # import tkinter as tk
-# from tkinter import messagebox, simpledialog
+# from tkinter import simpledialog, messagebox
+# import random
 
-# # Aquí va todo el código de las funciones load_data, build_graph, find_cheapest_route, find_shortest_route y main que ya tienes
-# # ...
 # # Función para cargar destinos y vuelos desde un archivo
 # def load_data(filename):
 #     destinations = {}
@@ -474,98 +357,321 @@ if __name__ == "__main__":
 #         visited.add(node)
         
 #         if node == end:
-#             return stops, path
+#             total_cost = sum(graph[path[i]][j][1] for i in range(len(path)-1) for j in range(len(graph[path[i]])) if graph[path[i]][j][0] == path[i+1])
+#             return stops, path, total_cost
         
 #         for neighbor, _ in graph[node]:
 #             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
 #                 heapq.heappush(heap, (stops + 1, neighbor, path))
     
-#     return float("inf"), []
-# # Función para mostrar el menú y manejar la entrada del usuario
-# def show_menu():
-#     print("\nBienvenido a Metro Travel")
-#     print("1. Imprimir destinos cargados")
-#     print("2. Imprimir vuelos cargados")
-#     print("3. Imprimir grafo de vuelos")
-#     print("4. Buscar ruta")
-#     print("5. Salir")
+#     return float("inf"), [], 0
 
-# def print_destinations(destinations):
-#     dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
-#     messagebox.showinfo("Destinos cargados", dest_str)
+# # Función para mostrar el menú
+# def show_menu(root, destinations, flights, graph):
+#     root.title("Metro Travel")
+#     root.geometry("400x300")
 
-# def print_flights(flights):
-#     flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
-#     messagebox.showinfo("Vuelos cargados", flights_str)
+#     tk.Label(root, text="Bienvenido a Metro Travel", font=("Arial", 16)).pack(pady=10)
 
-# def print_graph(graph):
-#     graph_str = "\n".join([f"{node} -> {neighbors}" for node, neighbors in graph.items()])
-#     messagebox.showinfo("Grafo de vuelos", graph_str)
+#     def print_destinations():
+#         dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
+#         print(dest_str)
 
-# def search_route(destinations, graph):
-#     start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
-#     end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
-#     has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
+#     def print_flights():
+#         flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
+#         print(flights_str)
 
-#     if start not in destinations or end not in destinations:
-#         messagebox.showerror("Error", "Código de aeropuerto no válido.")
-#         return
+#     def draw_graph(canvas, graph, destinations, path=[], route_info=""):
+#         canvas.delete("all")
+#         nodes = list(destinations.keys())
+#         pos = {}
+#         # Aumentar el tamaño del área de dibujo para mejorar la visibilidad
+#         width, height = 800, 600
+#         canvas.config(width=width, height=height)
+#         for node in nodes:
+#             pos[node] = (random.randint(50, width - 50), random.randint(50, height - 50))
+        
+#         for node, neighbors in graph.items():
+#             x1, y1 = pos[node]
+#             canvas.create_oval(x1-10, y1-10, x1+10, y1+10, fill="skyblue")
+#             canvas.create_text(x1, y1, text=node, fill="black")
+#             for neighbor, cost in neighbors:
+#                 x2, y2 = pos[neighbor]
+#                 if (node in path and neighbor in path and 
+#                     abs(path.index(node) - path.index(neighbor)) == 1):
+#                     canvas.create_line(x1, y1, x2, y2, fill="red", width=2)
+#                 else:
+#                     canvas.create_line(x1, y1, x2, y2, fill="gray")
+#                 mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+#                 canvas.create_text(mid_x, mid_y, text=f"${cost:.2f}", fill="red")
+        
+#         if route_info:
+#             canvas.create_text(width / 2, height - 20, text=route_info, fill="blue", font=("Arial", 10, "bold"))
 
-#     route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
+#     def print_graph_gui(path=[], route_info=""):
+#         graph_window = tk.Toplevel(root)
+#         graph_window.title("Grafo de vuelos")
+#         graph_window.geometry("800x600")  # Ajustar el tamaño de la ventana para que coincida con el tamaño del lienzo
 
-#     if route_type == "costo":
-#         cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
-#         if cost == float("inf"):
-#             messagebox.showinfo("Ruta más barata", "No hay ruta disponible que cumpla con los requisitos.")
+#         canvas = tk.Canvas(graph_window, width=800, height=600, bg="white")
+#         canvas.pack()
+
+#         draw_graph(canvas, graph, destinations, path, route_info)
+
+#     def search_route():
+#         while True:
+#             start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
+#             if start not in destinations:
+#                 messagebox.showerror("Error", "Código de aeropuerto de origen no válido. Vuelve a ingresar un código existente.")
+#                 continue
+
+#             end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
+#             if end not in destinations:
+#                 messagebox.showerror("Error", "Código de aeropuerto de destino no válido. Vuelve a ingresar un código existente.")
+#                 continue
+
+#             break
+
+#         has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
+
+#         route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
+
+#         if route_type == "costo":
+#             cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
+#             if cost == float("inf"):
+#                 route_info = "No hay ruta disponible que cumpla con los requisitos."
+#             else:
+#                 route_info = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
+#             print_graph_gui(cheapest_path, route_info)
+#         elif route_type == "escalas":
+#             stops, shortest_path, total_cost = find_shortest_route(graph, destinations, start, end, has_visa)
+#             if stops == float("inf"):
+#                 route_info = "No hay ruta disponible que cumpla con los requisitos."
+#             else:
+#                 route_info = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}\nCosto total: ${total_cost:.2f}"
+#             print_graph_gui(shortest_path, route_info)
 #         else:
-#             route_str = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
-#             messagebox.showinfo("Ruta más barata", route_str)
-#     elif route_type == "escalas":
-#         stops, shortest_path = find_shortest_route(graph, destinations, start, end, has_visa)
-#         if stops == float("inf"):
-#             messagebox.showinfo("Ruta con menos escalas", "No hay ruta disponible que cumpla con los requisitos.")
-#         else:
-#             route_str = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}"
-#             messagebox.showinfo("Ruta con menos escalas", route_str)
-#     else:
-#         messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
+#             messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
 
+#     tk.Button(root, text="Imprimir destinos cargados", width=30, command=print_destinations).pack(pady=10)
+#     tk.Button(root, text="Imprimir vuelos cargados", width=30, command=print_flights).pack(pady=10)
+#     tk.Button(root, text="Imprimir grafo de vuelos", width=30, command=print_graph_gui).pack(pady=10)
+#     tk.Button(root, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
+#     tk.Button(root, text="Salir", width=30, command=root.destroy).pack(pady=10)
+
+# # Función principal
 # def main():
 #     # Cargar destinos y vuelos desde el archivo
 #     destinations, flights = load_data('flights.txt')
 #     graph = build_graph(flights)
 
-#     while True:
-#         show_menu()
-#         choice = simpledialog.askinteger("Menú", "Seleccione una opción (1-5): ")
+#     root = tk.Tk()
 
-#         if choice == 1:
-#             print_destinations(destinations)
-#         elif choice == 2:
-#             print_flights(flights)
-#         elif choice == 3:
-#             print_graph(graph)
-#         elif choice == 4:
-#             search_route(destinations, graph)
-#         elif choice == 5:
-#             messagebox.showinfo("Salir", "Gracias por preferir nuestra agencia Metro Travel. ¡Hasta luego!")
-#             break
-#         else:
-#             messagebox.showerror("Error", "Opción no válida. Por favor, intente de nuevo.")
+#     show_menu(root, destinations, flights, graph)
+
+#     root.mainloop()
 
 # if __name__ == "__main__":
 #     main()
 
 
+# import heapq
+# from collections import defaultdict
+# import tkinter as tk
+# from tkinter import simpledialog
+# import random
+
+# # Función para cargar destinos y vuelos desde un archivo
+# def load_data(filename):
+#     destinations = {}
+#     flights = []
+#     with open(filename, 'r') as file:
+#         lines = file.readlines()
+#         mode = None
+#         for line in lines:
+#             line = line.strip()
+#             if line == "# Destinos":
+#                 mode = "destinos"
+#                 continue
+#             elif line == "# Vuelos":
+#                 mode = "vuelos"
+#                 continue
+
+#             if mode == "destinos" and line:
+#                 code, name, visa_required = line.split(',')
+#                 destinations[code] = {"name": name, "visa_required": visa_required == "Yes"}
+#             elif mode == "vuelos" and line:
+#                 src, dst, cost = line.split(',')
+#                 flights.append((src, dst, float(cost)))
+#                 flights.append((dst, src, float(cost)))  # Asumimos vuelos bidireccionales
+#     return destinations, flights
+
+# # Función para construir el grafo de vuelos
+# def build_graph(flights):
+#     graph = defaultdict(list)
+#     for src, dst, cost in flights:
+#         graph[src].append((dst, cost))
+#     return graph
+
+# # Función para encontrar la ruta más barata usando Dijkstra
+# def find_cheapest_route(graph, destinations, start, end, has_visa):
+#     heap = [(0, start, [])]
+#     visited = set()
+
+#     while heap:
+#         cost, node, path = heapq.heappop(heap)
+#         if node in visited:
+#             continue
+#         path = path + [node]
+#         visited.add(node)
+        
+#         if node == end:
+#             return cost, path
+        
+#         for neighbor, price in graph[node]:
+#             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
+#                 heapq.heappush(heap, (cost + price, neighbor, path))
+    
+#     return float("inf"), []
+
+# # Función para encontrar la ruta con menos escalas usando Dijkstra
+# def find_shortest_route(graph, destinations, start, end, has_visa):
+#     heap = [(0, start, [])]  # (number of stops, current node, path)
+#     visited = set()
+
+#     while heap:
+#         stops, node, path = heapq.heappop(heap)
+#         if node in visited:
+#             continue
+#         path = path + [node]
+#         visited.add(node)
+        
+#         if node == end:
+#             total_cost = sum(graph[path[i]][j][1] for i in range(len(path)-1) for j in range(len(graph[path[i]])) if graph[path[i]][j][0] == path[i+1])
+#             return stops, path, total_cost
+        
+#         for neighbor, _ in graph[node]:
+#             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
+#                 heapq.heappush(heap, (stops + 1, neighbor, path))
+    
+#     return float("inf"), [], 0
+
+# # Función para mostrar el menú
+# def show_menu(root, destinations, flights, graph):
+#     menu_window = tk.Toplevel(root)
+#     menu_window.title("Metro Travel")
+#     menu_window.geometry("400x300")
+
+#     tk.Label(menu_window, text="Bienvenido a Metro Travel", font=("Arial", 16)).pack(pady=10)
+
+#     def print_destinations():
+#         dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
+#         print(dest_str)
+
+#     def print_flights():
+#         flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
+#         print(flights_str)
+
+#     def draw_graph(canvas, graph, destinations, path=[], route_info=""):
+#         canvas.delete("all")
+#         nodes = list(destinations.keys())
+#         pos = {}
+#         # Aumentar el tamaño del área de dibujo para mejorar la visibilidad
+#         width, height = 800, 600
+#         canvas.config(width=width, height=height)
+#         for node in nodes:
+#             pos[node] = (random.randint(50, width - 50), random.randint(50, height - 50))
+        
+#         for node, neighbors in graph.items():
+#             x1, y1 = pos[node]
+#             canvas.create_oval(x1-10, y1-10, x1+10, y1+10, fill="skyblue")
+#             canvas.create_text(x1, y1, text=node, fill="black")
+#             for neighbor, cost in neighbors:
+#                 x2, y2 = pos[neighbor]
+#                 if (node in path and neighbor in path and 
+#                     abs(path.index(node) - path.index(neighbor)) == 1):
+#                     canvas.create_line(x1, y1, x2, y2, fill="red", width=2)
+#                 else:
+#                     canvas.create_line(x1, y1, x2, y2, fill="gray")
+#                 mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+#                 canvas.create_text(mid_x, mid_y, text=f"${cost:.2f}", fill="red")
+        
+#         if route_info:
+#             canvas.create_text(width / 2, height - 20, text=route_info, fill="blue", font=("Arial", 10, "bold"))
+
+#     def print_graph_gui(path=[], route_info=""):
+#         graph_window = tk.Toplevel(root)
+#         graph_window.title("Grafo de vuelos")
+#         graph_window.geometry("800x600")  # Ajustar el tamaño de la ventana para que coincida con el tamaño del lienzo
+
+#         canvas = tk.Canvas(graph_window, width=800, height=600, bg="white")
+#         canvas.pack()
+
+#         draw_graph(canvas, graph, destinations, path, route_info)
+
+#     def search_route():
+#         while True:
+#             start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
+#             if start not in destinations:
+#                 tk.messagebox.showerror("Error", "Código de aeropuerto de origen no válido. Vuelve a ingresar un código existente.")
+#                 continue
+
+#             end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
+#             if end not in destinations:
+#                 tk.messagebox.showerror("Error", "Código de aeropuerto de destino no válido. Vuelve a ingresar un código existente.")
+#                 continue
+
+#             break
+
+#         has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
+
+#         route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
+
+#         if route_type == "costo":
+#             cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
+#             if cost == float("inf"):
+#                 route_info = "No hay ruta disponible que cumpla con los requisitos."
+#             else:
+#                 route_info = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
+#             print_graph_gui(cheapest_path, route_info)
+#         elif route_type == "escalas":
+#             stops, shortest_path, total_cost = find_shortest_route(graph, destinations, start, end, has_visa)
+#             if stops == float("inf"):
+#                 route_info = "No hay ruta disponible que cumpla con los requisitos."
+#             else:
+#                 route_info = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}\nCosto total: ${total_cost:.2f}"
+#             print_graph_gui(shortest_path, route_info)
+#         else:
+#             tk.messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
+
+#     tk.Button(menu_window, text="Imprimir grafo de vuelos", width=30, command=print_graph_gui).pack(pady=10)
+#     tk.Button(menu_window, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
+#     tk.Button(menu_window, text="Salir", width=30, command=menu_window.destroy).pack(pady=10)
+
+# # Función principal
+# def main():
+#     # Cargar destinos y vuelos desde el archivo
+#     destinations, flights = load_data('flights.txt')
+#     graph = build_graph(flights)
+
+#     root = tk.Tk()
+#     root.title("Metro Travel")
+#     root.geometry("400x300")
+
+#     show_menu(root, destinations, flights, graph)
+
+#     root.mainloop()
+
+# if __name__ == "__main__":
+#     main()
 
 
 
 # import heapq
 # from collections import defaultdict
 # import tkinter as tk
-# from tkinter import simpledialog, messagebox
-# import networkx as nx
-# import matplotlib.pyplot as plt
+# from tkinter import simpledialog
+# import random
 
 # # Función para cargar destinos y vuelos desde un archivo
 # def load_data(filename):
@@ -633,236 +739,119 @@ if __name__ == "__main__":
 #         visited.add(node)
         
 #         if node == end:
-#             return stops, path
+#             total_cost = sum(graph[path[i]][j][1] for i in range(len(path)-1) for j in range(len(graph[path[i]])) if graph[path[i]][j][0] == path[i+1])
+#             return stops, path, total_cost
         
 #         for neighbor, _ in graph[node]:
 #             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
 #                 heapq.heappush(heap, (stops + 1, neighbor, path))
     
-#     return float("inf"), []
+#     return float("inf"), [], 0
 
-# # Función para construir y mostrar el subgrafo de la ruta
-# def build_subgraph(graph, path):
-#     subgraph = defaultdict(list)
-#     for i in range(len(path) - 1):
-#         for neighbor, cost in graph[path[i]]:
-#             if neighbor == path[i + 1]:
-#                 subgraph[path[i]].append((neighbor, cost))
-#                 break
-#     return subgraph
+# # Función para mostrar el menú
+# def show_menu(root, destinations, flights, graph):
+#     menu_window = tk.Toplevel(root)
+#     menu_window.title("Metro Travel")
+#     menu_window.geometry("400x300")
 
-# # Función para mostrar el subgrafo con networkx y matplotlib
-# def show_graph(graph):
-#     G = nx.DiGraph()
-#     for src, dsts in graph.items():
-#         for dst, cost in dsts:
-#             G.add_edge(src, dst, weight=cost)
+#     tk.Label(menu_window, text="Bienvenido a Metro Travel", font=("Arial", 16)).pack(pady=10)
 
-#     pos = nx.spring_layout(G)
-#     edge_labels = {(src, dst): f"${cost:.2f}" for src, dsts in graph.items() for dst, cost in dsts}
+#     def print_destinations():
+#         dest_str = "\n".join([f"{code}: {data['name']} {'(Requiere Visa)' if data['visa_required'] else ''}" for code, data in destinations.items()])
+#         print(dest_str)
 
-#     nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=2000, font_size=10, font_weight='bold')
-#     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
-#     plt.show()
+#     def print_flights():
+#         flights_str = "\n".join([f"{src} -> {dst}: ${cost:.2f}" for src, dst, cost in flights])
+#         print(flights_str)
 
-# # Función para manejar la búsqueda de rutas y mostrar los resultados
-# def search_route(destinations, flights, graph):
-#     start = simpledialog.askstring("Input", "Ingrese el código del aeropuerto de origen:").strip().upper()
-#     end = simpledialog.askstring("Input", "Ingrese el código del aeropuerto de destino:").strip().upper()
-#     has_visa = simpledialog.askstring("Input", "¿El pasajero tiene visa? (si/no):").strip().lower() == "si"
+#     def draw_graph(canvas, graph, destinations, path=[], route_info=""):
+#         canvas.delete("all")
+#         nodes = list(destinations.keys())
+#         pos = {}
+#         # Aumentar el tamaño del área de dibujo para mejorar la visibilidad
+#         width, height = 800, 600
+#         canvas.config(width=width, height=height)
+#         for node in nodes:
+#             pos[node] = (random.randint(50, width - 50), random.randint(50, height - 50))
+        
+#         for node, neighbors in graph.items():
+#             x1, y1 = pos[node]
+#             canvas.create_oval(x1-10, y1-10, x1+10, y1+10, fill="skyblue")
+#             canvas.create_text(x1, y1, text=node, fill="black")
+#             for neighbor, cost in neighbors:
+#                 x2, y2 = pos[neighbor]
+#                 if (node in path and neighbor in path and 
+#                     abs(path.index(node) - path.index(neighbor)) == 1):
+#                     canvas.create_line(x1, y1, x2, y2, fill="red", width=2)
+#                 else:
+#                     canvas.create_line(x1, y1, x2, y2, fill="gray")
+#                 mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+#                 canvas.create_text(mid_x, mid_y, text=f"${cost:.2f}", fill="red")
+        
+#         if route_info:
+#             canvas.create_text(width / 2, height - 20, text=route_info, fill="blue", font=("Arial", 10, "bold"))
 
-#     if start not in destinations or end not in destinations:
-#         messagebox.showerror("Error", "Código de aeropuerto no válido.")
-#         return
+#     def print_graph_gui(path=[], route_info=""):
+#         graph_window = tk.Toplevel(root)
+#         graph_window.title("Grafo de vuelos")
+#         graph_window.geometry("800x600")  # Ajustar el tamaño de la ventana para que coincida con el tamaño del lienzo
 
-#     route_type = simpledialog.askstring("Input", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas):").strip().lower()
+#         canvas = tk.Canvas(graph_window, width=800, height=600, bg="white")
+#         canvas.pack()
 
-#     if route_type == "costo":
-#         cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
-#         if cost == float("inf"):
-#             messagebox.showinfo("Resultado", "No hay ruta disponible que cumpla con los requisitos.")
+#         draw_graph(canvas, graph, destinations, path, route_info)
+
+#     def search_route():
+#         start = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de origen: ").strip().upper()
+#         end = simpledialog.askstring("Buscar ruta", "Ingrese el código del aeropuerto de destino: ").strip().upper()
+#         has_visa = simpledialog.askstring("Buscar ruta", "¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
+
+#         if start not in destinations or end not in destinations:
+#             print("Código de aeropuerto no válido.")
+#             return
+
+#         route_type = simpledialog.askstring("Buscar ruta", "¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
+
+#         if route_type == "costo":
+#             cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
+#             if cost == float("inf"):
+#                 route_info = "No hay ruta disponible que cumpla con los requisitos."
+#             else:
+#                 route_info = f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es:\n{' -> '.join(cheapest_path)}"
+#             print_graph_gui(cheapest_path, route_info)
+#         elif route_type == "escalas":
+#             stops, shortest_path, total_cost = find_shortest_route(graph, destinations, start, end, has_visa)
+#             if stops == float("inf"):
+#                 route_info = "No hay ruta disponible que cumpla con los requisitos."
+#             else:
+#                 route_info = f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es:\n{' -> '.join(shortest_path)}\nCosto total: ${total_cost:.2f}"
+#             print_graph_gui(shortest_path, route_info)
 #         else:
-#             subgraph = build_subgraph(graph, cheapest_path)
-#             messagebox.showinfo("Resultado", f"La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es: {' -> '.join(cheapest_path)}")
-#             show_graph(subgraph)
-#     elif route_type == "escalas":
-#         stops, shortest_path = find_shortest_route(graph, destinations, start, end, has_visa)
-#         if stops == float("inf"):
-#             messagebox.showinfo("Resultado", "No hay ruta disponible que cumpla con los requisitos.")
-#         else:
-#             subgraph = build_subgraph(graph, shortest_path)
-#             messagebox.showinfo("Resultado", f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es: {' -> '.join(shortest_path)}")
-#             show_graph(subgraph)
-#     else:
-#         messagebox.showerror("Error", "Opción no válida. Por favor, elija 'costo' o 'escalas'.")
+#             print("Opción no válida. Por favor, elija 'costo' o 'escalas'.")
 
-# # Función para mostrar el menú y manejar la entrada del usuario en la interfaz gráfica
-# def show_menu(destinations, flights, graph):
+#     # tk.Button(menu_window, text="Imprimir destinos cargados", width=30, command=print_destinations).pack(pady=10)
+#     # tk.Button(menu_window, text="Imprimir vuelos cargados", width=30, command=print_flights).pack(pady=10)
+#     tk.Button(menu_window, text="Imprimir grafo de vuelos", width=30, command=print_graph_gui).pack(pady=10)
+#     tk.Button(menu_window, text="Buscar ruta", width=30, command=search_route).pack(pady=10)
+#     tk.Button(menu_window, text="Salir", width=30, command=menu_window.destroy).pack(pady=10)
+
+# # Función principal
+# def main():
+#     # Cargar destinos y vuelos desde el archivo
+#     destinations, flights = load_data('flights.txt')
+#     graph = build_graph(flights)
+
 #     root = tk.Tk()
 #     root.title("Metro Travel")
+#     root.geometry("400x300")
 
-#     tk.Label(root, text="Bienvenido a Metro Travel").pack()
-
-#     tk.Button(root, text="Imprimir destinos cargados", command=lambda: messagebox.showinfo("Destinos cargados", destinations)).pack()
-#     tk.Button(root, text="Imprimir vuelos cargados", command=lambda: messagebox.showinfo("Vuelos cargados", flights)).pack()
-#     tk.Button(root, text="Imprimir grafo de vuelos", command=lambda: messagebox.showinfo("Grafo de vuelos", dict(graph))).pack()
-#     tk.Button(root, text="Buscar ruta", command=lambda: search_route(destinations, flights, graph)).pack()
-#     tk.Button(root, text="Salir", command=root.quit).pack()
+#     show_menu(root, destinations, flights, graph)
 
 #     root.mainloop()
 
-# # Función principal
-# def main():
-#     # Cargar destinos y vuelos desde el archivo
-#     destinations, flights = load_data('flights.txt')
-#     graph = build_graph(flights)
-
-#     # Mostrar el menú en la interfaz gráfica
-#     show_menu(destinations, flights, graph)
-
 # if __name__ == "__main__":
 #     main()
 
 
 
-
-
-
-
-
-# import heapq
-# from collections import defaultdict
-
-# # Función para cargar destinos y vuelos desde un archivo
-# def load_data(filename):
-#     destinations = {}
-#     flights = []
-#     with open(filename, 'r') as file:
-#         lines = file.readlines()
-#         mode = None
-#         for line in lines:
-#             line = line.strip()
-#             if line == "# Destinos":
-#                 mode = "destinos"
-#                 continue
-#             elif line == "# Vuelos":
-#                 mode = "vuelos"
-#                 continue
-
-#             if mode == "destinos" and line:
-#                 code, name, visa_required = line.split(',')
-#                 destinations[code] = {"name": name, "visa_required": visa_required == "Yes"}
-#             elif mode == "vuelos" and line:
-#                 src, dst, cost = line.split(',')
-#                 flights.append((src, dst, float(cost)))
-#                 flights.append((dst, src, float(cost)))  # Asumimos vuelos bidireccionales
-#     return destinations, flights
-
-# # Función para construir el grafo de vuelos
-# def build_graph(flights):
-#     graph = defaultdict(list)
-#     for src, dst, cost in flights:
-#         graph[src].append((dst, cost))
-#     return graph
-
-# # Función para encontrar la ruta más barata usando Dijkstra
-# def find_cheapest_route(graph, destinations, start, end, has_visa):
-#     heap = [(0, start, [])]
-#     visited = set()
-
-#     while heap:
-#         cost, node, path = heapq.heappop(heap)
-#         if node in visited:
-#             continue
-#         path = path + [node]
-#         visited.add(node)
-        
-#         if node == end:
-#             return cost, path
-        
-#         for neighbor, price in graph[node]:
-#             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
-#                 heapq.heappush(heap, (cost + price, neighbor, path))
-    
-#     return float("inf"), []
-
-# # Función para encontrar la ruta con menos escalas usando Dijkstra
-# def find_shortest_route(graph, destinations, start, end, has_visa):
-#     heap = [(0, start, [])]  # (number of stops, current node, path)
-#     visited = set()
-
-#     while heap:
-#         stops, node, path = heapq.heappop(heap)
-#         if node in visited:
-#             continue
-#         path = path + [node]
-#         visited.add(node)
-        
-#         if node == end:
-#             return stops, path
-        
-#         for neighbor, _ in graph[node]:
-#             if neighbor not in visited and (not destinations[neighbor]["visa_required"] or has_visa):
-#                 heapq.heappush(heap, (stops + 1, neighbor, path))
-    
-#     return float("inf"), []
-
-# # Función para mostrar el menú y manejar la entrada del usuario
-# def show_menu():
-#     print("\nBienvenido a Metro Travel")
-#     print("1. Imprimir destinos cargados")
-#     print("2. Imprimir vuelos cargados")
-#     print("3. Imprimir grafo de vuelos")
-#     print("4. Buscar ruta")
-#     print("5. Salir")
-
-# # Función principal
-# def main():
-#     # Cargar destinos y vuelos desde el archivo
-#     destinations, flights = load_data('flights.txt')
-#     graph = build_graph(flights)
-
-#     while True:
-#         show_menu()
-#         choice = input("Seleccione una opción: ").strip()
-
-#         if choice == '1':
-#             print("Destinos cargados:", destinations)
-#         elif choice == '2':
-#             print("Vuelos cargados:", flights)
-#         elif choice == '3':
-#             print("Grafo de vuelos:", dict(graph))
-#         elif choice == '4':
-#             start = input("Ingrese el código del aeropuerto de origen: ").strip().upper()
-#             end = input("Ingrese el código del aeropuerto de destino: ").strip().upper()
-#             has_visa = input("¿El pasajero tiene visa? (si/no): ").strip().lower() == "si"
-
-#             if start not in destinations or end not in destinations:
-#                 print("Código de aeropuerto no válido.")
-#                 continue
-
-#             route_type = input("¿Desea la ruta más barata (costo) o la de menor cantidad de escalas (escalas)? (costo/escalas): ").strip().lower()
-
-#             if route_type == "costo":
-#                 cost, cheapest_path = find_cheapest_route(graph, destinations, start, end, has_visa)
-#                 if cost == float("inf"):
-#                     print("No hay ruta disponible que cumpla con los requisitos.")
-#                 else:
-#                     print(f" \n La ruta más barata de {start} a {end} cuesta ${cost:.2f} y es: {' -> '.join(cheapest_path)} \n")
-#             elif route_type == "escalas":
-#                 stops, shortest_path = find_shortest_route(graph, destinations, start, end, has_visa)
-#                 if stops == float("inf"):
-#                     print("No hay ruta disponible que cumpla con los requisitos.")
-#                 else:
-#                     print(f"La ruta con menos escalas de {start} a {end} tiene {stops} escalas y es: {' -> '.join(shortest_path)}")
-#             else:
-#                 print("Opción no válida. Por favor, elija 'costo' o 'escalas'.")
-#         elif choice == '5':
-#             print(" \n Gracias preferir nuestra agencia Metro Travel. ¡Hasta luego 👋 ! \n ")
-#             break
-#         else:
-#             print("Opción no válida. Por favor, intente de nuevo.")
-
-# if __name__ == "__main__":
-#     main()
 
