@@ -28,7 +28,6 @@ def load_data(filename):
                 flights.append((src, dst, float(cost)))
                 flights.append((dst, src, float(cost)))  # Asumimos vuelos bidireccionales
     return destinations, flights
-
 # Función para construir el grafo de vuelos
 def build_graph(flights):
     graph = defaultdict(list)
